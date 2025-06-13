@@ -1,11 +1,13 @@
 import sys
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
     QPushButton, QLabel, QComboBox, QStackedWidget, QMessageBox, QTextEdit, QSizePolicy,
-    QSpinBox, QLineEdit
+    QSpinBox, QLineEdit, QFileDialog
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIntValidator
+
+from analyza1 import *
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -96,23 +98,18 @@ class MainWindow(QMainWindow):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         label = QLabel("Zvolte dny v týdnu, pro které bude analyzováno rozložení zpoždění:", self.analyza1_den_widget)
-        # Seznam s možností výběru více dnů
+        # List widget s checkboxy
         self.analyza1_dny_list = QListWidget(self.analyza1_den_widget)
-        self.analyza1_dny_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         self.analyza1_dny_list.setMinimumWidth(200)
         self.analyza1_dny_list.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-# Dny v týdnu s pořadím (pondělí = 0)
-dny = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
-for den in dny:
-    self.analyza1_dny_list.addItem(QListWidgetItem(den))
-
-# Funkce pro získání indexů vybraných dnů (např. [0, 1, 2] pro Po–St)
-def get_selected_days():
-    return [
-        dny.index(item.text())
-        for item in self.analyza1_dny_list.selectedItems()
-    ]
+        # Přidání položek s checkboxy
+        dny = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
+        for den in dny:
+            item = QListWidgetItem(den)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Unchecked)
+            self.analyza1_dny_list.addItem(item)
 
         btn_pokracovat = QPushButton("Pokračovat", self.analyza1_den_widget)
         btn_pokracovat.setFixedSize(150, 35)
@@ -121,17 +118,25 @@ def get_selected_days():
 
         layout.addStretch()
         layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.analyza1_dny_combo, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.analyza1_dny_list, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addSpacing(20)
         layout.addWidget(btn_pokracovat, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(btn_zpet, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addStretch()
 
-        self.analyza1_dny_combo.currentIndexChanged.connect(self._on_analyza1_den_selected)
+        self.analyza1_dny_list.currentItemChanged.connect(self._on_analyza1_den_selected)
         btn_pokracovat.clicked.connect(self._on_analyza1_den_pokracovat_clicked)
         btn_zpet.clicked.connect(self._on_analyza1_zpet_den_clicked)
 
         self.stacked_widget.addWidget(self.analyza1_den_widget)
+
+    def get_selected_days(self):
+        selected_indices = []
+        for i in range(self.analyza1_dny_list.count()):
+            item = self.analyza1_dny_list.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                selected_indices.append(i)
+        return selected_indices
 
     def _create_analyza1_casovy_usek_screen(self):
         self.analyza1_casovy_usek_widget = QWidget()
@@ -187,8 +192,8 @@ def get_selected_days():
         validator = QIntValidator(1, 99999, self.analyza1_delka_useku_lineedit)
         self.analyza1_delka_useku_lineedit.setValidator(validator)
 
-        btn_proved_analizu = QPushButton("Provést analýzu", self.analyza1_delka_useku_widget)
-        btn_proved_analizu.setFixedSize(150, 35)
+        btn_proved_analyzu = QPushButton("Provést analýzu", self.analyza1_delka_useku_widget)
+        btn_proved_analyzu.setFixedSize(150, 35)
         btn_zpet = QPushButton("Zpět", self.analyza1_delka_useku_widget)
         btn_zpet.setFixedSize(150, 35)
 
@@ -196,11 +201,11 @@ def get_selected_days():
         layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.analyza1_delka_useku_lineedit, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addSpacing(20)
-        layout.addWidget(btn_proved_analizu, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(btn_proved_analyzu, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(btn_zpet, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addStretch()
 
-        btn_proved_analizu.clicked.connect(self._on_analyza1_proved_analizu_clicked)
+        btn_proved_analyzu.clicked.connect(self._on_analyza1_proved_analyzu_clicked)
         btn_zpet.clicked.connect(self._on_analyza1_delka_useku_zpet_clicked)
 
         self.stacked_widget.addWidget(self.analyza1_delka_useku_widget)
@@ -272,22 +277,22 @@ def get_selected_days():
         self.analyza2_dny_combo.setMinimumWidth(200)
         self.analyza2_dny_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        btn_proved_analizu = QPushButton("Provést analýzu", self.analyza2_den_widget)
+        btn_proved_analyzu = QPushButton("Provést analýzu", self.analyza2_den_widget)
         btn_zpet = QPushButton("Zpět", self.analyza2_den_widget)
 
-        btn_proved_analizu.setFixedSize(150, 35)
+        btn_proved_analyzu.setFixedSize(150, 35)
         btn_zpet.setFixedSize(150, 35)
 
         layout.addStretch()
         layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.analyza2_dny_combo, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addSpacing(20)
-        layout.addWidget(btn_proved_analizu, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(btn_proved_analyzu, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(btn_zpet, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addStretch()
 
         self.analyza2_dny_combo.currentIndexChanged.connect(self._on_analyza2_den_selected)
-        btn_proved_analizu.clicked.connect(self._on_analyza2_proved_analizu_clicked)
+        btn_proved_analyzu.clicked.connect(self._on_analyza2_proved_analyzu_clicked)
         btn_zpet.clicked.connect(self._on_analyza2_zpet_den_clicked)
 
         self.stacked_widget.addWidget(self.analyza2_den_widget)
@@ -367,34 +372,55 @@ def get_selected_days():
         else:
             self.stacked_widget.setCurrentWidget(self.analyza1_delka_useku_widget)
 
-    def _on_analyza1_proved_analizu_clicked(self):
-        linka = self.analyza1_linky_combo.currentText()
-        den = self.analyza1_dny_combo.currentText()
+    def _on_analyza1_proved_analyzu_clicked(self):
+        # Načtení vstupních hodnot z GUI
+        try:
+            linka = int(self.analyza1_linky_combo.currentText().split()[-1])
+        except ValueError:
+            QMessageBox.warning(self, "Chybný vstup", "Neplatné číslo linky.")
+            return
+        dny = self.get_selected_days()
         hodina_start = self.analyza1_hodina_start_spinbox.value()
         hodina_konec = self.analyza1_hodina_konec_spinbox.value()
         delka_useku_text = self.analyza1_delka_useku_lineedit.text()
-
         if not delka_useku_text:
             QMessageBox.warning(self, "Chybný vstup", "Délka úseku nesmí být prázdná.")
             return
-        
         try:
             delka_useku = int(delka_useku_text)
             if delka_useku <= 0:
-                QMessageBox.warning(self, "Chybný vstup", "Délka úseku musí být kladné číslo.")
-                return
+                raise ValueError
         except ValueError:
-            QMessageBox.warning(self, "Chybný vstup", "Délka úseku musí být celé číslo.")
+            QMessageBox.warning(self, "Chybný vstup", "Délka úseku musí být celé kladné číslo.")
             return
 
-        QMessageBox.information(self, "Simulace Analýzy",
-                                f"Simulace provedení analýzy rozložení zpoždění pro:<br>"
-                                f"Linka: <b>{linka}</b><br>"
-                                f"Den: <b>{den}</b><br>"
-                                f"Časový interval: <b>{hodina_start}:00 - {hodina_konec}:00</b><br>"
-                                f"Délka úseku: <b>{delka_useku} metrů</b><br>"
-                                f"<i>(Zde by se zobrazily výsledky analýzy)</i>")
+        # Výběr složky GDB
+        gdb_path = QFileDialog.getExistingDirectory(self, "Vyberte umístění vstupních dat (gdb)")
+        if not gdb_path:
+            return
+        # Výběr výstupní složky pro PDF
+        output_folder = QFileDialog.getExistingDirectory(self, "Vyberte výstupní složku pro PDF")
+        if not output_folder:
+            return
 
+        # Spuštění reálné analýzy
+        try:
+            pdf_paths = spust_analyzu(
+                gdb_path=gdb_path,
+                output_folder=output_folder,
+                linka=linka,
+                dny=dny,
+                start=hodina_start,
+                konec=hodina_konec,
+                delka_useku=delka_useku
+            )
+            QMessageBox.information(self, "Hotovo!", "Pdf mapy uloženy do vybrané složky, projekty připraveny k finálním úpravám.")
+            os.startfile(r"D:\MGR\2_semestr\aplgeo\kod\UI_MHD_Most_Litvinov\vysledky\layout_4_smer_Litvínov,Citadela.pdf")
+            os.startfile(r"D:\MGR\2_semestr\aplgeo\kod\UI_MHD_Most_Litvinov\vysledky\layout_4_smer_Most,Dopravní podnik.pdf")
+        except Exception as e:
+            QMessageBox.critical(self, "Chyba analýzy", str(e))
+
+        # Návrat do hlavního menu
         self.stacked_widget.setCurrentWidget(self.main_menu_widget)
 
     # Návratová tlačítka pro Analýzu 1
@@ -424,7 +450,7 @@ def get_selected_days():
     def _on_analyza2_den_selected(self, index):
         pass
 
-    def _on_analyza2_proved_analizu_clicked(self):
+    def _on_analyza2_proved_analyzu_clicked(self):
         linka = self.analyza2_linky_combo.currentText()
         den = self.analyza2_dny_combo.currentText()
 
