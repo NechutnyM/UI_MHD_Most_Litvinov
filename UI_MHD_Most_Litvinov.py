@@ -2,12 +2,14 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
     QPushButton, QLabel, QComboBox, QStackedWidget, QMessageBox, QTextEdit, QSizePolicy,
-    QSpinBox, QLineEdit, QFileDialog
+    QSpinBox, QLineEdit, QFileDialog, QProgressDialog
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIntValidator
 
 from analyza1 import *
+from analyza2_most import *
+from analyza2_litvinov import *
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -24,8 +26,6 @@ class MainWindow(QMainWindow):
         self._create_analyza1_casovy_usek_screen()
         self._create_analyza1_delka_useku_screen()
         self._create_analyza2_uzel_screen()
-        self._create_analyza2_linka_screen()
-        self._create_analyza2_den_screen()
         self._create_o_projektu_screen()
 
         self.stacked_widget.setCurrentWidget(self.main_menu_widget)
@@ -218,84 +218,47 @@ class MainWindow(QMainWindow):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         label = QLabel("Zvolte centrální přestupní uzel (CPU):", self.analyza2_uzel_widget)
-        btn_uzel1 = QPushButton("CPU Most", self.analyza2_uzel_widget)
-        btn_uzel2 = QPushButton("CPU Litvínov", self.analyza2_uzel_widget)
-        btn_zpet = QPushButton("Zpět", self.analyza2_uzel_widget)
-
-        btn_uzel1.setFixedSize(200, 40)
-        btn_uzel2.setFixedSize(200, 40)
-        btn_zpet.setFixedSize(150, 35)
-
-        layout.addStretch()
-        layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(btn_uzel1, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(btn_uzel2, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addSpacing(20)
-        layout.addWidget(btn_zpet, alignment=Qt.AlignmentFlag.AlignCenter)
+        btn_most = QPushButton("CPU Most", self.analyza2_uzel_widget)
+        btn_litv = QPushButton("CPU Litvínov", self.analyza2_uzel_widget)
+        for btn in (btn_most, btn_litv):
+            btn.setFixedSize(200, 40)
+            layout.addWidget(btn)
         layout.addStretch()
 
-        btn_uzel1.clicked.connect(self._on_analyza2_uzel1_clicked)
-        btn_uzel2.clicked.connect(self._on_analyza2_uzel2_clicked)
-        btn_zpet.clicked.connect(self._on_analyza2_zpet_uzel_clicked)
-
+        btn_most.clicked.connect(lambda: self._run_analyza2('Most'))
+        btn_litv.clicked.connect(lambda: self._run_analyza2('Litvinov'))
         self.stacked_widget.addWidget(self.analyza2_uzel_widget)
 
-    def _create_analyza2_linka_screen(self):
-        self.analyza2_linka_widget = QWidget()
-        layout = QVBoxLayout(self.analyza2_linka_widget)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    def _run_analyza2(self, cpu):
+        # Výběr geodatabáze
+        gdb_path = QFileDialog.getExistingDirectory(self, f"Vyberte Geodatabázi (.gdb) pro CPU {cpu}")
+        if not gdb_path:
+            return
+        # Výběr výstupní složky pro CSV
+        output_folder = QFileDialog.getExistingDirectory(self, "Vyberte složku pro CSV výstup")
+        if not output_folder:
+            return
 
-        label = QLabel("Zvolte linku pro Analýzu 2:", self.analyza2_linka_widget)
-        self.analyza2_linky_combo = QComboBox(self.analyza2_linka_widget)
-        self.analyza2_linky_combo.addItems(["Linka 1", "Linka 2", "Linka 3", "Linka 4", "Linka 5", "Linka 8", "Linka 9", "Linka 10", "Linka 12", "Linka 13", "Linka 14", "Linka 15", "Linka 16", "Linka 17", "Linka 18", "Linka 20", "Linka 21", "Linka 22", "Linka 23", "Linka 25", "Linka 27", "Linka 28", "Linka 30", "Linka 31", "Linka 40", "Linka 50", "Linka 51", "Linka 53", "Linka 60"])
-        self.analyza2_linky_combo.setMinimumWidth(200)
-        self.analyza2_linky_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        # Dialog ukazatele průběhu
+        progress = QProgressDialog(f"Probíhá analýza {cpu}...", None, 0, 0, self)
+        progress.setWindowTitle("Průběh analýzy")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setCancelButton(None)
+        progress.show()
+        QApplication.processEvents()
 
-        btn_zpet = QPushButton("Zpět", self.analyza2_linka_widget)
-        btn_zpet.setFixedSize(150, 35)
-
-        layout.addStretch()
-        layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.analyza2_linky_combo, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addSpacing(20)
-        layout.addWidget(btn_zpet, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addStretch()
-
-        self.analyza2_linky_combo.currentIndexChanged.connect(self._on_analyza2_linka_selected)
-        btn_zpet.clicked.connect(self._on_analyza2_zpet_linka_clicked)
-
-        self.stacked_widget.addWidget(self.analyza2_linka_widget)
-
-    def _create_analyza2_den_screen(self):
-        self.analyza2_den_widget = QWidget()
-        layout = QVBoxLayout(self.analyza2_den_widget)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        label = QLabel("Zvolte den v týdnu pro Analýzu 2:", self.analyza2_den_widget)
-        self.analyza2_dny_combo = QComboBox(self.analyza2_den_widget)
-        self.analyza2_dny_combo.addItems(["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"])
-        self.analyza2_dny_combo.setMinimumWidth(200)
-        self.analyza2_dny_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-
-        btn_proved_analyzu = QPushButton("Provést analýzu", self.analyza2_den_widget)
-        btn_zpet = QPushButton("Zpět", self.analyza2_den_widget)
-
-        btn_proved_analyzu.setFixedSize(150, 35)
-        btn_zpet.setFixedSize(150, 35)
-
-        layout.addStretch()
-        layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.analyza2_dny_combo, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addSpacing(20)
-        layout.addWidget(btn_proved_analyzu, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(btn_zpet, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addStretch()
-
-        self.analyza2_dny_combo.currentIndexChanged.connect(self._on_analyza2_den_selected)
-        btn_proved_analyzu.clicked.connect(self._on_analyza2_proved_analyzu_clicked)
-        btn_zpet.clicked.connect(self._on_analyza2_zpet_den_clicked)
-
-        self.stacked_widget.addWidget(self.analyza2_den_widget)
+        try:
+            if cpu == 'Most':
+                csv_path = spust_prestupy_most(gdb_path, output_folder)
+            else:
+                csv_path = spust_prestupy_litvinov(gdb_path, output_folder)
+            progress.close()
+            QMessageBox.information(self, "Hotovo!", f"Analýza {cpu} dokončena!\nCSV: {csv_path}")
+        except Exception as e:
+            progress.close()
+            QMessageBox.critical(self, "Chyba analýzy", str(e))
+        finally:
+            self.stacked_widget.setCurrentWidget(self.main_menu_widget)
 
     def _create_o_projektu_screen(self):
         self.o_projektu_widget = QWidget()
@@ -437,18 +400,12 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentWidget(self.analyza1_casovy_usek_widget)
 
 
-    # Analýza 2 (beze změny)
+    # Analýza 2
     def _on_analyza2_uzel1_clicked(self):
         self.stacked_widget.setCurrentWidget(self.analyza2_linka_widget)
 
     def _on_analyza2_uzel2_clicked(self):
         self.stacked_widget.setCurrentWidget(self.analyza2_linka_widget)
-
-    def _on_analyza2_linka_selected(self, index):
-        self.stacked_widget.setCurrentWidget(self.analyza2_den_widget)
-
-    def _on_analyza2_den_selected(self, index):
-        pass
 
     def _on_analyza2_proved_analyzu_clicked(self):
         linka = self.analyza2_linky_combo.currentText()
@@ -462,13 +419,7 @@ class MainWindow(QMainWindow):
     def _on_analyza2_zpet_uzel_clicked(self):
         self.stacked_widget.setCurrentWidget(self.main_menu_widget)
 
-    def _on_analyza2_zpet_linka_clicked(self):
-        self.stacked_widget.setCurrentWidget(self.analyza2_uzel_widget)
-
-    def _on_analyza2_zpet_den_clicked(self):
-        self.stacked_widget.setCurrentWidget(self.analyza2_linka_widget)
-
-    # O projektu (beze změny)
+    # O projektu
     def _on_o_projektu_zpet_clicked(self):
         self.stacked_widget.setCurrentWidget(self.main_menu_widget)
 
